@@ -1,0 +1,14 @@
+services:
+  timeplan:
+    build: ./server
+    ports:
+      - "8000:8000"
+    environment:
+      TIMEPLAN_SECRET_KEY: ${TIMEPLAN_SECRET_KEY:?TIMEPLAN_SECRET_KEY setzen}
+      TIMEPLAN_ADMIN_PASSWORD: ${TIMEPLAN_ADMIN_PASSWORD:?TIMEPLAN_ADMIN_PASSWORD setzen}
+      TIMEPLAN_DEVICE_TOKENS: ${TIMEPLAN_DEVICE_TOKENS:-}
+    volumes:
+      - timeplan-data:/data
+    restart: unless-stopped
+volumes:
+  timeplan-data:
