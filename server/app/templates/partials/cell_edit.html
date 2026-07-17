@@ -1,0 +1,36 @@
+<td class="cell editing" id="cell-{{ cell_id }}">
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% for entry in cell_entries if entry.type == "text" %}
+  <form hx-post="/web/entries/{{ entry.id }}" hx-target="#cell-{{ cell_id }}"
+        hx-swap="outerHTML">
+    <input type="hidden" name="base_revision" value="{{ entry.revision }}">
+    <textarea name="text" rows="2">{{ entry.content.text }}</textarea>
+    <button type="submit">Speichern</button>
+    <button type="button" hx-post="/web/entries/{{ entry.id }}/delete"
+            hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
+  </form>
+  {% endfor %}
+  {% for entry in cell_entries if entry.type == "drawing" %}
+  <div class="entry drawing">&#9998; Zeichnung (nur am Tablet bearbeitbar)
+    <button type="button" hx-post="/web/entries/{{ entry.id }}/delete"
+            hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
+  </div>
+  {% endfor %}
+  <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-{{ cell_id }}"
+        hx-swap="outerHTML">
+    {% if worker.category == "azubi" %}
+    <select name="monteur">
+      <option value="">— Monteur wählen —</option>
+      {% for m in monteure %}
+      <option value="{{ m.number }} {{ m.name }}">{{ m.number }} {{ m.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="text" placeholder="oder freier Text">
+    {% else %}
+    <textarea name="text" rows="2" placeholder="Neuer Hinweis"></textarea>
+    {% endif %}
+    <button type="submit">Hinzufügen</button>
+    <button type="button" hx-get="/web/cells/{{ cell_id }}"
+            hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Abbrechen</button>
+  </form>
+</td>

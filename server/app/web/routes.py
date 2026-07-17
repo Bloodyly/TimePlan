@@ -5,6 +5,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from .. import db
 from .. import weeks as weeklib
 from ..repos import entries as entries_repo
 from ..repos import workers as workers_repo
@@ -104,3 +105,82 @@ def cell_fragment(cell_id: str, request: Request):
     except ValueError:
         raise HTTPException(status_code=404, detail="unbekannte Zelle")
     return templates.TemplateResponse(request, "partials/cell.html", context)
+
+
+def _render_cell(request: Request, cell_id: str, template="partials/cell.html",
+                 error: str | None = None):
+    context = _cell_context(request, cell_id)
+    context["error"] = error
+    return templates.TemplateResponse(request, template, context)
+
+
+@web_router.get("/web/cells/{cell_id}/edit")
+def cell_edit(cell_id: str, request: Request):
+    require_admin(request)
+    try:
+        return _render_cell(request, cell_id, "partials/cell_edit.html")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="unbekannte Zelle")
+
+
+async def _broadcast_cell(request: Request, cell_id: str) -> None:
+    await request.app.state.hub.broadcast({
+        "event": "cell.updated", "cell_id": cell_id,
+        "revision": db.latest_revision(request.app.state.db)})
+
+
+@web_router.post("/web/cells/{cell_id}/entries")
+async def web_create_entry(cell_id: str, request: Request,
+                           text: str = Form(""), monteur: str = Form("")):
+    require_admin(request)
+    state = request.app.state
+    value = text.strip() or monteur.strip()
+    if not value:
+        return _render_cell(request, cell_id, "partials/cell_edit.html",
+                            error="Text fehlt")
+    try:
+        entries_repo.create_entry(state.db, cell_id, "text", {"text": value},
+                                  "web", "web-admin", state.settings)
+    except Exception as exc:
+        return _render_cell(request, cell_id, "partials/cell_edit.html",
+                            error=str(exc))
+    await _broadcast_cell(request, cell_id)
+    return _render_cell(request, cell_id)
+
+
+@web_router.post("/web/entries/{entry_id}")
+async def web_update_entry(entry_id: str, request: Request,
+                           text: str = Form(...), base_revision: int = Form(...)):
+    require_admin(request)
+    state = request.app.state
+    existing = entries_repo.get_entry(state.db, entry_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="unbekannter Eintrag")
+    try:
+        entries_repo.update_entry(state.db, entry_id, {"text": text.strip()},
+                                  base_revision, "web", "web-admin", state.settings)
+    except entries_repo.ConflictError:
+        return _render_cell(request, existing["cell_id"],
+                            "partials/cell_edit.html",
+                            error="Konflikt: Eintrag wurde parallel geändert")
+    except Exception as exc:
+        return _render_cell(request, existing["cell_id"],
+                            "partials/cell_edit.html", error=str(exc))
+    await _broadcast_cell(request, existing["cell_id"])
+    return _render_cell(request, existing["cell_id"])
+
+
+@web_router.post("/web/entries/{entry_id}/delete")
+async def web_delete_entry(entry_id: str, request: Request):
+    require_admin(request)
+    state = request.app.state
+    existing = entries_repo.get_entry(state.db, entry_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="unbekannter Eintrag")
+    try:
+        entries_repo.delete_entry(state.db, entry_id, "web", "web-admin")
+    except Exception as exc:
+        return _render_cell(request, existing["cell_id"],
+                            "partials/cell_edit.html", error=str(exc))
+    await _broadcast_cell(request, existing["cell_id"])
+    return _render_cell(request, existing["cell_id"])
