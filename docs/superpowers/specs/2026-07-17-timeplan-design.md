@@ -79,7 +79,15 @@ Portainer-Environment-Variablen.
 
 ## 4. Datenmodell (SQLite)
 
-- **Worker** – `id, name, position, active, revision`
+- **Worker** – `id, number (MA-Nr.), name, category (monteur | azubi), position,
+  active, revision`. Angezeigt wird „{number} {name}" wie in der bisherigen
+  Excel-Liste (`Wochen-Planer 2025.xlsx`).
+  - **monteur** (Objektleiter): max. **15 aktive** – volle Zeilenhöhe, Text- und
+    Zeichnungs-Entries
+  - **azubi** (Mitarb./Azubis): max. **10 aktive** – eigener Block am unteren
+    Rand, nur **eine Textzeile hoch**, ausschließlich Text-Entries (die
+    Zuordnung zu einem Monteur), keine Zeichnungen. Die Limits werden in der
+    Monteurverwaltung erzwungen (erst deaktivieren, dann neu anlegen).
 - **Week** – `id ("2026-W31"), status (OPEN | LOCKED | ARCHIVED), revision`;
   Wochen entstehen lazy beim ersten Zugriff
 - **Entry** – `id, cell_id, type (text | drawing), author_type (tablet | web),
@@ -134,11 +142,14 @@ WS     /ws/v1                          {"event":"cell.updated","cell_id":…,"re
 
 ## 7. WebUI (Jinja2 + htmx)
 
-- **Wochenansicht** – Raster Monteure × 7 Tage (wie Tablet-Variante A).
-  Textzellen inline bearbeitbar (htmx-Formulare), Handschrift als
-  Server-Vorschaubild. Live-Aktualisierung: WebSocket-Listener lädt betroffene
+- **Wochenansicht** – Raster Monteure × 7 Tage (wie Tablet-Variante A), darunter
+  der einzeilige Azubi-Block (siehe §4). Textzellen inline bearbeitbar
+  (htmx-Formulare), Handschrift als Server-Vorschaubild. In Azubi-Zellen bietet
+  das Eingabefeld eine Schnellauswahl der aktiven Monteure (Zuordnung), freier
+  Text bleibt möglich. Live-Aktualisierung: WebSocket-Listener lädt betroffene
   Zellen per htmx nach.
-- **Monteurverwaltung** – anlegen, umbenennen, deaktivieren, sortieren.
+- **Monteurverwaltung** – anlegen (mit MA-Nr. und Kategorie Monteur/Azubi),
+  umbenennen, deaktivieren, sortieren; erzwingt die Limits 15/10.
 - **Verwaltung** – Wochenstatus sperren/öffnen, PDF manuell erzeugen,
   Archiv-Liste mit Download, Änderungsverlauf, Gerätestatus (letzter Sync pro
   Tablet), offene Konflikte auflösen.
@@ -156,8 +167,13 @@ Module innerhalb einer App:
 Verhalten:
 
 - Start in aktueller Woche; Navigation vor/zurück + „Heute"-Sprung
-- Zellen-Tipp öffnet nahezu vollflächige Zeichenansicht; vorhandene Strokes
-  werden geladen und sind bearbeitbar
+- Raster: oben bis zu 15 Monteur-Zeilen (volle Höhe), am unteren Rand der
+  Azubi-Block mit bis zu 10 einzeiligen Text-Zeilen; das Layout ist so
+  dimensioniert, dass 15 + 10 Zeilen ohne Scrollen auf das Display passen
+- Zellen-Tipp bei Monteuren öffnet die nahezu vollflächige Zeichenansicht;
+  vorhandene Strokes werden geladen und sind bearbeitbar
+- Zellen-Tipp bei Azubis öffnet eine Schnellauswahl der aktiven Monteure
+  (plus freie Texteingabe) – erzeugt einen Text-Entry, keine Zeichnung
 - S-Pen mit Druckstärke; Palm-Rejection über `TOOL_TYPE_STYLUS`, Fingereingabe
   optional zuschaltbar; Undo/Redo/Löschen
 - Einstellungsseite: Server-URL, Gerätename, Token – nichts hartkodiert
@@ -166,8 +182,9 @@ Verhalten:
 
 ## 9. PDF & Archivierung
 
-- WeasyPrint rendert ein druckoptimiertes HTML/CSS-Template; Handschrift wird
-  als SVG aus den Vektordaten eingebettet (verlustfrei skalierbar).
+- WeasyPrint rendert ein druckoptimiertes HTML/CSS-Template (Monteur-Raster
+  plus Azubi-Block, wie in der Wochenansicht); Handschrift wird als SVG aus den
+  Vektordaten eingebettet (verlustfrei skalierbar).
 - Manueller Export aus der WebUI + automatischer Wochenabschluss.
 - Ablage auf NAS-Volume in der Struktur
   `/Monteure/{Jahr}/KW{NN}/…` (PDF + Daten-JSON + Zeichnungen),
@@ -181,6 +198,8 @@ Verhalten:
 - Automatischer Wochenabschluss: **Sonntag 23:59, zwei Wochen nach Wochenende**
 - Archivierte Wochen: am Tablet **read-only**, in der WebUI wieder zu öffnen
 - Pro Zelle: **max. 1 Zeichnungs-Entry pro Gerät**, Text-Entries mehrfach
+- Zeilenlimits: **15 aktive Monteure**, **10 aktive Azubis** (Azubi-Zeilen
+  einzeilig, nur Text)
 
 ## 11. Meilensteine (verschränkt, jeder endet testbar)
 
