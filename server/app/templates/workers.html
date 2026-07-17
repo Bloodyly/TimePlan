@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="workers-page">
+  <h1>Monteure &amp; Azubis</h1>
+  {% if error %}<div class="flash-error">{{ error }}</div>{% endif %}
+  {% for group, title in [(monteure, "Monteure (max. 15 aktiv)"),
+                          (azubis, "Azubis (max. 10 aktiv)")] %}
+  <h2>{{ title }}</h2>
+  <table>
+    <tr><th>MA-Nr.</th><th>Name</th><th>Pos.</th><th>Aktiv</th><th></th></tr>
+    {% for w in group %}
+    <tr>
+      <form method="post" action="/workers/{{ w.id }}">
+        <td><input name="number" value="{{ w.number }}" size="5"></td>
+        <td><input name="name" value="{{ w.name }}"></td>
+        <td><input name="position" value="{{ w.position }}" size="3"></td>
+        <td><input type="checkbox" name="active" value="1"
+                   {% if w.active %}checked{% endif %}></td>
+        <td><button type="submit">Speichern</button></td>
+      </form>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+  <h2>Neu anlegen</h2>
+  <form method="post" action="/workers">
+    <input name="number" placeholder="MA-Nr." size="5" required>
+    <input name="name" placeholder="Name" required>
+    <select name="category">
+      <option value="monteur">Monteur</option>
+      <option value="azubi">Azubi</option>
+    </select>
+    <button type="submit">Anlegen</button>
+  </form>
+</div>
+{% endblock %}

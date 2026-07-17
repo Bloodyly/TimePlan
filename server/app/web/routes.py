@@ -184,3 +184,56 @@ async def web_delete_entry(entry_id: str, request: Request):
                             "partials/cell_edit.html", error=str(exc))
     await _broadcast_cell(request, existing["cell_id"])
     return _render_cell(request, existing["cell_id"])
+
+
+@web_router.get("/workers")
+def workers_page(request: Request, error: str | None = None):
+    require_admin(request)
+    all_workers = workers_repo.list_workers(request.app.state.db)
+    return templates.TemplateResponse(request, "workers.html", {
+        "monteure": [w for w in all_workers if w["category"] == "monteur"],
+        "azubis": [w for w in all_workers if w["category"] == "azubi"],
+        "error": error,
+    })
+
+
+async def _workers_redirect(request: Request, error: str | None = None):
+    await request.app.state.hub.broadcast({
+        "event": "workers.updated",
+        "revision": db.latest_revision(request.app.state.db)})
+    url = "/workers" if not error else f"/workers?error={error}"
+    return RedirectResponse(url, status_code=303)
+
+
+@web_router.post("/workers")
+async def workers_create(request: Request, number: str = Form(...),
+                         name: str = Form(...), category: str = Form(...)):
+    require_admin(request)
+    settings = request.app.state.settings
+    try:
+        workers_repo.create_worker(request.app.state.db, number.strip(),
+                                   name.strip(), category,
+                                   max_monteure=settings.max_monteure,
+                                   max_azubis=settings.max_azubis)
+    except workers_repo.LimitExceeded as exc:
+        return await _workers_redirect(request, str(exc))
+    return await _workers_redirect(request)
+
+
+@web_router.post("/workers/{worker_id}")
+async def workers_update(worker_id: str, request: Request,
+                         number: str = Form(...), name: str = Form(...),
+                         position: int = Form(...), active: str = Form(None)):
+    require_admin(request)
+    settings = request.app.state.settings
+    try:
+        workers_repo.update_worker(request.app.state.db, worker_id,
+                                   number=number.strip(), name=name.strip(),
+                                   position=position, active=active == "1",
+                                   max_monteure=settings.max_monteure,
+                                   max_azubis=settings.max_azubis)
+    except workers_repo.LimitExceeded as exc:
+        return await _workers_redirect(request, str(exc))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unbekannter Worker")
+    return await _workers_redirect(request)
