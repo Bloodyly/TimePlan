@@ -2,7 +2,7 @@ import secrets
 
 from fastapi import APIRouter, HTTPException, Request
 
-from .. import db
+from .. import db, weeks as weeklib
 from ..repos import workers
 
 router = APIRouter(prefix="/api/v1")
@@ -30,3 +30,15 @@ def require_device(request: Request) -> str:
 def get_workers(request: Request):
     require_device(request)
     return {"workers": workers.list_workers(request.app.state.db)}
+
+
+@router.get("/weeks/{week_id}")
+def get_week(week_id: str, request: Request):
+    require_device(request)
+    conn = request.app.state.db
+    try:
+        week = weeklib.get_or_create_week(conn, week_id)
+        dates = [d.isoformat() for d in weeklib.week_dates(week_id)]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return {"week": week, "dates": dates, "entries": []}
