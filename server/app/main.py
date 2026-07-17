@@ -1,7 +1,10 @@
 import os
+import pathlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.staticfiles import StaticFiles
 
 from . import db
 from .config import load_settings
@@ -29,6 +32,12 @@ def create_app() -> FastAPI:
     from .ws import Hub, ws_router
     app.state.hub = Hub()
     app.include_router(ws_router)
+
+    from .web.routes import web_router
+    app.include_router(web_router)
+    app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+    static_dir = pathlib.Path(__file__).resolve().parent / "static"
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.get("/api/v1/status")
     def status(request: Request):
