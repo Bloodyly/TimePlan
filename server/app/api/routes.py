@@ -85,6 +85,8 @@ async def create_entry(payload: EntryIn, request: Request):
             "tablet", device_id, state.settings)
     except Exception as exc:
         raise _map_entry_error(exc)
+    await state.hub.broadcast({"event": "cell.updated", "cell_id": entry["cell_id"],
+                               "revision": entry["revision"]})
     return {"entry": entry}
 
 
@@ -98,16 +100,23 @@ async def update_entry(entry_id: str, payload: EntryUpdateIn, request: Request):
             "tablet", device_id, state.settings)
     except Exception as exc:
         raise _map_entry_error(exc)
+    await state.hub.broadcast({"event": "cell.updated", "cell_id": entry["cell_id"],
+                               "revision": entry["revision"]})
     return {"entry": entry}
 
 
 @router.delete("/entries/{entry_id}", status_code=204)
 async def delete_entry(entry_id: str, request: Request):
     device_id = require_device(request)
+    state = request.app.state
+    existing = entries_repo.get_entry(state.db, entry_id)
     try:
-        entries_repo.delete_entry(request.app.state.db, entry_id, "tablet", device_id)
+        entries_repo.delete_entry(state.db, entry_id, "tablet", device_id)
     except Exception as exc:
         raise _map_entry_error(exc)
+    await state.hub.broadcast({"event": "cell.updated",
+                               "cell_id": existing["cell_id"],
+                               "revision": db.latest_revision(state.db)})
 
 
 @router.get("/sync")

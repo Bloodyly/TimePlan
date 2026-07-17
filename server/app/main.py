@@ -26,6 +26,10 @@ def create_app() -> FastAPI:
     from .api.routes import router as api_router
     app.include_router(api_router)
 
+    from .ws import Hub, ws_router
+    app.state.hub = Hub()
+    app.include_router(ws_router)
+
     @app.get("/api/v1/status")
     def status(request: Request):
         return {"status": "ok", "revision": db.latest_revision(request.app.state.db)}
