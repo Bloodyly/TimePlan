@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="weeknav">
+  <a href="/week/{{ prev_week }}">&larr; Vorherige</a>
+  <strong>{{ week_id }}</strong>
+  <span class="status">[{{ week.status }}]</span>
+  <a href="/week/{{ next_week }}">Nächste &rarr;</a>
+  <a href="/week/{{ current_week }}">Heute</a>
+</div>
+<table class="grid" data-week="{{ week_id }}">
+  <thead>
+    <tr>
+      <th class="worker">Monteur</th>
+      {% for label in day_labels %}<th>{{ label }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for worker in monteure %}
+    <tr>
+      <th class="worker">{{ worker.number }} {{ worker.name }}</th>
+      {% for date in dates %}
+        {% with cell_id = make_cell_id(week_id, worker.id, date),
+                cell_entries = by_cell[make_cell_id(week_id, worker.id, date)] %}
+          {% include "partials/cell.html" %}
+        {% endwith %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    <tr class="separator"><td colspan="8">Mitarb. / Azubis</td></tr>
+    {% for worker in azubis %}
+    <tr class="azubi">
+      <th class="worker">{{ worker.number }} {{ worker.name }}</th>
+      {% for date in dates %}
+        {% with cell_id = make_cell_id(week_id, worker.id, date),
+                cell_entries = by_cell[make_cell_id(week_id, worker.id, date)] %}
+          {% include "partials/cell.html" %}
+        {% endwith %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
