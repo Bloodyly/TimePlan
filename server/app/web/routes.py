@@ -1,5 +1,6 @@
 import collections
 import pathlib
+from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -57,7 +58,8 @@ def _grid_context(request: Request, week_id: str) -> dict:
     all_workers = [w for w in workers_repo.list_workers(conn) if w["active"]]
     by_cell = collections.defaultdict(list)
     for entry in entries_repo.entries_for_week(conn, week_id):
-        by_cell[entry["cell_id"]].append(entry)
+        if entry["conflict_of"] is None:
+            by_cell[entry["cell_id"]].append(entry)
     return {
         "week": week,
         "week_id": week_id,
@@ -91,7 +93,7 @@ def _cell_context(request: Request, cell_id: str) -> dict:
     if worker is None:
         raise ValueError(worker_id)
     cell_entries = [e for e in entries_repo.entries_for_week(conn, week_id)
-                    if e["cell_id"] == cell_id]
+                    if e["cell_id"] == cell_id and e["conflict_of"] is None]
     return {"worker": worker, "cell_id": cell_id, "cell_entries": cell_entries,
             "monteure": [w for w in workers_repo.list_workers(conn)
                          if w["active"] and w["category"] == "monteur"]}
@@ -198,11 +200,12 @@ def workers_page(request: Request, error: str | None = None):
 
 
 async def _workers_redirect(request: Request, error: str | None = None):
-    await request.app.state.hub.broadcast({
-        "event": "workers.updated",
-        "revision": db.latest_revision(request.app.state.db)})
-    url = "/workers" if not error else f"/workers?error={error}"
-    return RedirectResponse(url, status_code=303)
+    if error is None:
+        await request.app.state.hub.broadcast({
+            "event": "workers.updated",
+            "revision": db.latest_revision(request.app.state.db)})
+        return RedirectResponse("/workers", status_code=303)
+    return RedirectResponse(f"/workers?error={quote(error)}", status_code=303)
 
 
 @web_router.post("/workers")

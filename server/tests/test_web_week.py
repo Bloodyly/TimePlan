@@ -35,5 +35,39 @@ def test_cell_fragment(admin):
     assert f'id="cell-{cell_id}"' in r.text
 
 
+def test_week_page_hides_conflict_copies(admin):
+    conn = admin.app.state.db
+    settings = admin.app.state.settings
+    m = workers.create_worker(conn, "144", "Albrecht", "monteur")
+    cell_id = f"2026-W31_{m['id']}_2026-07-30"
+    entry = entries_repo.create_entry(
+        conn, cell_id, "text", {"text": "Original"}, "web", "web-admin", settings)
+    with pytest.raises(entries_repo.ConflictError):
+        entries_repo.update_entry(
+            conn, entry["id"], {"text": "Konflikt-Version"},
+            entry["revision"] - 1, "web", "web-admin", settings)
+    r = admin.get("/week/2026-W31")
+    assert r.status_code == 200
+    assert r.text.count("Original") == 1
+    assert "Konflikt-Version" not in r.text
+
+
+def test_cell_fragment_hides_conflict_copies(admin):
+    conn = admin.app.state.db
+    settings = admin.app.state.settings
+    m = workers.create_worker(conn, "144", "Albrecht", "monteur")
+    cell_id = f"2026-W31_{m['id']}_2026-07-30"
+    entry = entries_repo.create_entry(
+        conn, cell_id, "text", {"text": "Original"}, "web", "web-admin", settings)
+    with pytest.raises(entries_repo.ConflictError):
+        entries_repo.update_entry(
+            conn, entry["id"], {"text": "Konflikt-Version"},
+            entry["revision"] - 1, "web", "web-admin", settings)
+    r = admin.get(f"/web/cells/{cell_id}")
+    assert r.status_code == 200
+    assert r.text.count("Original") == 1
+    assert "Konflikt-Version" not in r.text
+
+
 def test_week_page_requires_login(client):
     assert client.get("/week/2026-W31", follow_redirects=False).status_code == 303
