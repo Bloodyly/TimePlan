@@ -108,3 +108,21 @@ async def delete_entry(entry_id: str, request: Request):
         entries_repo.delete_entry(request.app.state.db, entry_id, "tablet", device_id)
     except Exception as exc:
         raise _map_entry_error(exc)
+
+
+@router.get("/sync")
+def sync(request: Request, since: int = 0):
+    require_device(request)
+    conn = request.app.state.db
+    rows = conn.execute(
+        "SELECT MAX(revision) AS revision, entity_type, entity_id,"
+        " (SELECT action FROM changelog c2 WHERE c2.entity_type=c1.entity_type"
+        "   AND c2.entity_id=c1.entity_id ORDER BY revision DESC LIMIT 1) AS action"
+        " FROM changelog c1 WHERE revision > ?"
+        " GROUP BY entity_type, entity_id ORDER BY revision",
+        (since,),
+    ).fetchall()
+    return {
+        "latest_revision": db.latest_revision(conn),
+        "changes": [dict(r) for r in rows],
+    }
