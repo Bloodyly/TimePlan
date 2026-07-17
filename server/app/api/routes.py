@@ -1,8 +1,11 @@
 import secrets
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
-from .. import db, weeks as weeklib
+from .. import db
+from .. import weeks as weeklib
+from ..repos import entries as entries_repo
 from ..repos import workers
 
 router = APIRouter(prefix="/api/v1")
@@ -41,4 +44,67 @@ def get_week(week_id: str, request: Request):
         dates = [d.isoformat() for d in weeklib.week_dates(week_id)]
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-    return {"week": week, "dates": dates, "entries": []}
+    return {"week": week, "dates": dates,
+            "entries": entries_repo.entries_for_week(conn, week_id)}
+
+
+class EntryIn(BaseModel):
+    cell_id: str
+    type: str
+    content: dict
+
+
+class EntryUpdateIn(BaseModel):
+    content: dict
+    base_revision: int
+
+
+def _map_entry_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, entries_repo.NotFound):
+        return HTTPException(status_code=404, detail="entry not found")
+    if isinstance(exc, entries_repo.PayloadTooLarge):
+        return HTTPException(status_code=413, detail=str(exc))
+    if isinstance(exc, entries_repo.WeekLocked):
+        return HTTPException(status_code=423, detail=f"week locked: {exc}")
+    if isinstance(exc, entries_repo.ConflictError):
+        return HTTPException(status_code=409, detail={
+            "error": "revision_conflict",
+            "conflict_entry_id": exc.conflict_entry["id"],
+            "current_revision": exc.current_revision,
+        })
+    return HTTPException(status_code=422, detail=str(exc))
+
+
+@router.post("/entries", status_code=201)
+async def create_entry(payload: EntryIn, request: Request):
+    device_id = require_device(request)
+    state = request.app.state
+    try:
+        entry = entries_repo.create_entry(
+            state.db, payload.cell_id, payload.type, payload.content,
+            "tablet", device_id, state.settings)
+    except Exception as exc:
+        raise _map_entry_error(exc)
+    return {"entry": entry}
+
+
+@router.put("/entries/{entry_id}")
+async def update_entry(entry_id: str, payload: EntryUpdateIn, request: Request):
+    device_id = require_device(request)
+    state = request.app.state
+    try:
+        entry = entries_repo.update_entry(
+            state.db, entry_id, payload.content, payload.base_revision,
+            "tablet", device_id, state.settings)
+    except Exception as exc:
+        raise _map_entry_error(exc)
+    return {"entry": entry}
+
+
+@router.delete("/entries/{entry_id}", status_code=204)
+async def delete_entry(entry_id: str, request: Request):
+    device_id = require_device(request)
+    try:
+        entries_repo.delete_entry(request.app.state.db, entry_id, "tablet", device_id)
+    except Exception as exc:
+        raise _map_entry_error(exc)
