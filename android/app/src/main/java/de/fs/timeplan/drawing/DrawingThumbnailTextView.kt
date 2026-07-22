@@ -15,6 +15,12 @@ class DrawingThumbnailTextView(context: Context) : TextView(context) {
             invalidate()
         }
 
+    init {
+        // Halo behind the text glyphs (matches R.color.paper_bg) so the cell text stays
+        // legible on top of a busy drawing, regardless of what's drawn underneath it.
+        setShadowLayer(4f, 0f, 0f, Color.parseColor("#F9F1E3"))
+    }
+
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#201A10")
         style = Paint.Style.STROKE
@@ -24,19 +30,31 @@ class DrawingThumbnailTextView(context: Context) : TextView(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val content = drawingContent ?: return
-        if (content.canvas_width <= 0 || content.canvas_height <= 0 || width <= 0 || height <= 0) return
-        val scaleX = width.toFloat() / content.canvas_width
-        val scaleY = height.toFloat() / content.canvas_height
-        canvas.save()
-        canvas.scale(scaleX, scaleY)
-        for (stroke in content.strokes) {
-            val path = Path()
-            stroke.points.firstOrNull()?.let { path.moveTo(it.x, it.y) }
-            for (point in stroke.points.drop(1)) path.lineTo(point.x, point.y)
-            canvas.drawPath(path, paint)
+        val content = drawingContent
+        if (content != null && width > 0 && height > 0) {
+            val bbox = boundingBoxWithPadding(content.strokes)
+            if (bbox != null) {
+                val scaleX = width / bbox.width
+                val scaleY = height / bbox.height
+                for (stroke in content.strokes) {
+                    canvas.drawPath(scaledPathFor(stroke, bbox, scaleX, scaleY), paint)
+                }
+            }
         }
-        canvas.restore()
+        // Draw the cell's text last so it always sits as the top-most layer, readable
+        // regardless of what the handwriting underneath looks like.
+        super.onDraw(canvas)
+    }
+
+    private fun scaledPathFor(stroke: Stroke, bbox: BoundingBox, scaleX: Float, scaleY: Float): Path {
+        val path = Path()
+        val points = stroke.points
+        points.firstOrNull()?.let {
+            path.moveTo((it.x - bbox.minX) * scaleX, (it.y - bbox.minY) * scaleY)
+        }
+        for (point in points.drop(1)) {
+            path.lineTo((point.x - bbox.minX) * scaleX, (point.y - bbox.minY) * scaleY)
+        }
+        return path
     }
 }

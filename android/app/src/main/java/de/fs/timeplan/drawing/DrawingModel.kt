@@ -63,6 +63,22 @@ class StrokeHistory {
     }
 }
 
+data class BoundingBox(val minX: Float, val minY: Float, val width: Float, val height: Float)
+
+fun boundingBoxWithPadding(strokes: List<Stroke>, paddingFraction: Float = 0.1f): BoundingBox? {
+    val points = strokes.flatMap { it.points }
+    if (points.isEmpty()) return null
+    val minX = points.minOf { it.x }
+    val maxX = points.maxOf { it.x }
+    val minY = points.minOf { it.y }
+    val maxY = points.maxOf { it.y }
+    val rawWidth = (maxX - minX).coerceAtLeast(1f)
+    val rawHeight = (maxY - minY).coerceAtLeast(1f)
+    val padX = rawWidth * paddingFraction
+    val padY = rawHeight * paddingFraction
+    return BoundingBox(minX - padX, minY - padY, rawWidth + 2 * padX, rawHeight + 2 * padY)
+}
+
 fun scaleStrokes(
     strokes: List<Stroke>,
     sourceWidth: Int,

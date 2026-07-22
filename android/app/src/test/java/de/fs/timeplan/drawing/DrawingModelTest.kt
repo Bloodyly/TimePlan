@@ -96,4 +96,49 @@ class DrawingModelTest {
         val scaled = scaleStrokes(strokes, 100, 200, 100, 200)
         assertEquals(strokes, scaled)
     }
+
+    @Test
+    fun `boundingBoxWithPadding returns null for an empty stroke list`() {
+        assertNull(boundingBoxWithPadding(emptyList()))
+    }
+
+    @Test
+    fun `boundingBoxWithPadding pads a single stroke by 10 percent on each axis`() {
+        // Raw bounding box: x in [0, 100], y in [0, 50] -> 100 x 50.
+        val strokes = listOf(Stroke("#201A10", 4f, listOf(StrokePoint(0f, 0f, 1f, 0L), StrokePoint(100f, 50f, 1f, 1L))))
+        val bbox = boundingBoxWithPadding(strokes)
+        assertEquals(-10f, bbox!!.minX, 0.001f)
+        assertEquals(-5f, bbox.minY, 0.001f)
+        assertEquals(120f, bbox.width, 0.001f)
+        assertEquals(60f, bbox.height, 0.001f)
+    }
+
+    @Test
+    fun `boundingBoxWithPadding spans across multiple strokes, not just one`() {
+        val strokes = listOf(
+            Stroke("#201A10", 4f, listOf(StrokePoint(0f, 0f, 1f, 0L))),
+            Stroke("#201A10", 4f, listOf(StrokePoint(200f, 100f, 1f, 0L)))
+        )
+        val bbox = boundingBoxWithPadding(strokes)
+        // Raw box spans the full range across both strokes: x in [0, 200], y in [0, 100].
+        assertEquals(-20f, bbox!!.minX, 0.001f)
+        assertEquals(-10f, bbox.minY, 0.001f)
+        assertEquals(240f, bbox.width, 0.001f)
+        assertEquals(120f, bbox.height, 0.001f)
+    }
+
+    @Test
+    fun `boundingBoxWithPadding keeps a nonzero height for a perfectly horizontal line`() {
+        val strokes = listOf(Stroke("#201A10", 4f, listOf(StrokePoint(0f, 10f, 1f, 0L), StrokePoint(50f, 10f, 1f, 1L))))
+        val bbox = boundingBoxWithPadding(strokes)
+        assertTrue(bbox!!.height >= 1f)
+    }
+
+    @Test
+    fun `boundingBoxWithPadding defaults paddingFraction to 0_1`() {
+        val strokes = listOf(Stroke("#201A10", 4f, listOf(StrokePoint(0f, 0f, 1f, 0L), StrokePoint(100f, 100f, 1f, 1L))))
+        val default = boundingBoxWithPadding(strokes)
+        val explicit = boundingBoxWithPadding(strokes, paddingFraction = 0.1f)
+        assertEquals(explicit, default)
+    }
 }

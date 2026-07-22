@@ -5,12 +5,29 @@
     android:orientation="vertical"
     android:background="@color/paper_surface">
 
-    <de.fs.timeplan.drawing.DrawingView
-        android:id="@+id/drawingCanvas"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@color/paper_bg" />
+        android:background="@color/paper_bg">
+
+        <TextView
+            android:id="@+id/drawingBackgroundText"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="16dp"
+            android:gravity="top|start"
+            android:textColor="@color/ink_faint"
+            android:textSize="20sp"
+            android:visibility="gone" />
+
+        <de.fs.timeplan.drawing.DrawingView
+            android:id="@+id/drawingCanvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent" />
+
+    </FrameLayout>
 
     <TextView
         android:id="@+id/drawingErrorLabel"

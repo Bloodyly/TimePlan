@@ -360,6 +360,98 @@ class WeekActivityTest {
     }
 
     @Test
+    fun `opening the drawing editor shows an existing text entry as background context`() {
+        val server = okhttp3.mockwebserver.MockWebServer()
+        server.start()
+        de.fs.timeplan.config.ConfigRepository(
+            org.robolectric.RuntimeEnvironment.getApplication()
+        ).save(de.fs.timeplan.config.ServerConfig(
+            baseUrl = server.url("/").toString().trimEnd('/'),
+            deviceId = "tablet-01", token = "testtoken"
+        ))
+        val monteur = de.fs.timeplan.model.Worker("w-1", "144", "Albrecht", "monteur", 1, true, 1)
+        val weekId = WeekId.currentWeekId()
+        val dates = WeekId.weekDates(weekId).map { it.toString() }
+        val cellId = WeekId.makeCellId(weekId, monteur.id, dates[0])
+        val textContent = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{"text":"Baustelle A"}"""
+        )
+        val textEntry = de.fs.timeplan.model.Entry(
+            id = "e-text", cell_id = cellId, type = "text",
+            author_type = "web", author_id = "web-1",
+            content = textContent, conflict_of = null,
+            created_at = "t", updated_at = "t", revision = 1
+        )
+        val drawingContent = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{"canvas_width":10,"canvas_height":10,"strokes":[]}"""
+        )
+        val drawingEntry = de.fs.timeplan.model.Entry(
+            id = "e-drawing", cell_id = cellId, type = "drawing",
+            author_type = "tablet", author_id = "tablet-01",
+            content = drawingContent, conflict_of = null,
+            created_at = "t", updated_at = "t", revision = 1
+        )
+        enqueueEmptyWeekLoad(server, weekId)
+
+        val controller = Robolectric.buildActivity(WeekActivity::class.java)
+        controller.setup()
+        val activity = controller.get()
+
+        setField(activity, "currentWorkers", listOf(monteur))
+        setField(activity, "currentEntries", listOf(textEntry, drawingEntry))
+        setField(activity, "currentDates", dates)
+        setField(activity, "currentWeekId", weekId)
+
+        val method = WeekActivity::class.java.getDeclaredMethod(
+            "onMonteurCellClick", String::class.java, Int::class.java
+        )
+        method.isAccessible = true
+        method.invoke(activity, monteur.id, 0)
+
+        val dialog = ShadowDialog.getLatestDialog()
+        val backgroundTextView = dialog.findViewById<TextView>(R.id.drawingBackgroundText)
+        assertEquals(View.VISIBLE, backgroundTextView.visibility)
+        assertEquals("Baustelle A", backgroundTextView.text.toString())
+        server.shutdown()
+    }
+
+    @Test
+    fun `opening the drawing editor with no text entry hides the background context label`() {
+        val server = okhttp3.mockwebserver.MockWebServer()
+        server.start()
+        de.fs.timeplan.config.ConfigRepository(
+            org.robolectric.RuntimeEnvironment.getApplication()
+        ).save(de.fs.timeplan.config.ServerConfig(
+            baseUrl = server.url("/").toString().trimEnd('/'),
+            deviceId = "tablet-01", token = "testtoken"
+        ))
+        val monteur = de.fs.timeplan.model.Worker("w-1", "144", "Albrecht", "monteur", 1, true, 1)
+        val weekId = WeekId.currentWeekId()
+        val dates = WeekId.weekDates(weekId).map { it.toString() }
+        enqueueEmptyWeekLoad(server, weekId)
+
+        val controller = Robolectric.buildActivity(WeekActivity::class.java)
+        controller.setup()
+        val activity = controller.get()
+
+        setField(activity, "currentWorkers", listOf(monteur))
+        setField(activity, "currentEntries", emptyList<de.fs.timeplan.model.Entry>())
+        setField(activity, "currentDates", dates)
+        setField(activity, "currentWeekId", weekId)
+
+        val method = WeekActivity::class.java.getDeclaredMethod(
+            "onMonteurCellClick", String::class.java, Int::class.java
+        )
+        method.isAccessible = true
+        method.invoke(activity, monteur.id, 0)
+
+        val dialog = ShadowDialog.getLatestDialog()
+        val backgroundTextView = dialog.findViewById<TextView>(R.id.drawingBackgroundText)
+        assertEquals(View.GONE, backgroundTextView.visibility)
+        server.shutdown()
+    }
+
+    @Test
     fun `saving a new drawing posts to the server and closes the dialog`() {
         val server = okhttp3.mockwebserver.MockWebServer()
         server.start()

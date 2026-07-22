@@ -26,6 +26,7 @@ import de.fs.timeplan.grid.AzubiStatus
 import de.fs.timeplan.grid.WeekGridAdapter
 import de.fs.timeplan.model.Entry
 import de.fs.timeplan.model.Worker
+import de.fs.timeplan.model.textOrNull
 import de.fs.timeplan.net.ApiResult
 import de.fs.timeplan.net.DemoApi
 import de.fs.timeplan.net.TimePlanApi
@@ -226,12 +227,18 @@ class WeekActivity : AppCompatActivity() {
         val dateIso = currentDates.getOrNull(dateIndex) ?: return
         val cellId = WeekId.makeCellId(currentWeekId, workerId, dateIso)
         val existingDrawing = currentEntries.firstOrNull { it.cell_id == cellId && it.type == "drawing" }
-        showDrawingEditor(worker, cellId, existingDrawing)
+        val existingText = currentEntries.firstOrNull { it.cell_id == cellId && it.type == "text" }?.textOrNull()
+        showDrawingEditor(worker, cellId, existingDrawing, existingText)
     }
 
-    private fun showDrawingEditor(worker: Worker, cellId: String, existingEntry: Entry?) {
+    private fun showDrawingEditor(worker: Worker, cellId: String, existingEntry: Entry?, backgroundText: String? = null) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_drawing, null)
         val canvas = dialogView.findViewById<DrawingView>(R.id.drawingCanvas)
+        val backgroundTextView = dialogView.findViewById<TextView>(R.id.drawingBackgroundText)
+        if (!backgroundText.isNullOrBlank()) {
+            backgroundTextView.text = backgroundText
+            backgroundTextView.visibility = View.VISIBLE
+        }
         val errorLabel = dialogView.findViewById<TextView>(R.id.drawingErrorLabel)
         val undoButton = dialogView.findViewById<Button>(R.id.buttonDrawingUndo)
         val redoButton = dialogView.findViewById<Button>(R.id.buttonDrawingRedo)
