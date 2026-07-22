@@ -17,6 +17,26 @@ from ..repos import workers as workers_repo
 TEMPLATES_DIR = pathlib.Path(__file__).resolve().parents[1] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+
+def _drawing_viewbox(content: dict, padding_fraction: float = 0.1) -> str:
+    points = [p for stroke in content.get("strokes", []) for p in stroke.get("points", [])]
+    if not points:
+        width = content.get("canvas_width", 1)
+        height = content.get("canvas_height", 1)
+        return f"0 0 {width} {height}"
+    xs = [p["x"] for p in points]
+    ys = [p["y"] for p in points]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    width = max(max_x - min_x, 1)
+    height = max(max_y - min_y, 1)
+    pad_x = width * padding_fraction
+    pad_y = height * padding_fraction
+    return f"{min_x - pad_x} {min_y - pad_y} {width + 2 * pad_x} {height + 2 * pad_y}"
+
+
+templates.env.filters["drawing_viewbox"] = _drawing_viewbox
+
 web_router = APIRouter()
 
 # Single source of truth for the fixed Azubi status vocabulary (label -> CSS

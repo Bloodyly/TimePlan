@@ -18,7 +18,7 @@
       {% endif %}
     {% elif entry.type == "drawing" %}
       <svg class="entry-drawing"
-           viewBox="0 0 {{ entry.content.canvas_width }} {{ entry.content.canvas_height }}"
+           viewBox="{{ entry.content | drawing_viewbox }}"
            preserveAspectRatio="xMidYMid meet">
         {% for stroke in entry.content.strokes %}
         <polyline points="{% for p in stroke.points %}{{ p.x }},{{ p.y }} {% endfor %}"

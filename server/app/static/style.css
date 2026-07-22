@@ -113,6 +113,7 @@ table.grid {
 .grid td.cell {
   min-height: 4rem; height: 4rem; padding: .4rem; vertical-align: top;
   font-size: .875rem; overflow: hidden; cursor: pointer; background: var(--paper-bg);
+  position: relative;
 }
 .grid td.cell:hover { background: var(--paper-surface); }
 .grid tr.azubi td.cell {
@@ -126,13 +127,21 @@ table.grid {
   padding: .5rem; text-transform: uppercase;
 }
 
-.entry-text { color: var(--ink); }
-.entry-drawing { display: block; width: 100%; height: 34px; margin-top: 2px; }
+.entry-text {
+  color: var(--ink); position: relative; z-index: 1;
+  background: rgba(249, 241, 227, 0.88); display: inline-block; border-radius: 3px;
+  padding: 0 .15rem;
+}
+.entry-drawing {
+  display: block; position: absolute; inset: .4rem; width: auto; height: auto;
+  z-index: 0; pointer-events: none;
+}
 
 /* Status / assignment chips (Azubi cells) */
 .chip {
   display: inline-block; padding: .2rem .55rem; border-radius: var(--radius);
   font-size: .8125rem; font-weight: 600; white-space: nowrap;
+  position: relative; z-index: 1;
 }
 .chip.status-school { background: var(--status-school); color: var(--on-status); }
 .chip.status-sick { background: var(--status-sick); color: var(--on-status); }

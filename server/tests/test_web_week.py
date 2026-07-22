@@ -2,12 +2,63 @@ import pytest
 
 from app.repos import entries as entries_repo
 from app.repos import workers
+from app.web.routes import _drawing_viewbox
 
 
 @pytest.fixture()
 def admin(client):
     client.post("/login", data={"password": "pw"})
     return client
+
+
+def test_drawing_viewbox_single_stroke_two_points():
+    content = {
+        "canvas_width": 100, "canvas_height": 100,
+        "strokes": [{"color": "#000", "base_width": 2.0, "points": [
+            {"x": 0.0, "y": 0.0, "pressure": 1.0, "time": 0},
+            {"x": 10.0, "y": 20.0, "pressure": 1.0, "time": 1},
+        ]}],
+    }
+    # width = 10-0=10, height = 20-0=20; pad_x = 1.0, pad_y = 2.0
+    # minX = 0-1.0 = -1.0, minY = 0-2.0 = -2.0, w = 10+2.0 = 12.0, h = 20+4.0 = 24.0
+    assert _drawing_viewbox(content) == "-1.0 -2.0 12.0 24.0"
+
+
+def test_drawing_viewbox_spans_multiple_strokes():
+    content = {
+        "canvas_width": 100, "canvas_height": 100,
+        "strokes": [
+            {"color": "#000", "base_width": 2.0,
+             "points": [{"x": 0.0, "y": 0.0, "pressure": 1.0, "time": 0}]},
+            {"color": "#000", "base_width": 2.0,
+             "points": [{"x": 100.0, "y": 50.0, "pressure": 1.0, "time": 0}]},
+        ],
+    }
+    # bounding box must span across both strokes, not just the first one:
+    # width = 100-0=100, height = 50-0=50; pad_x = 10.0, pad_y = 5.0
+    # minX = 0-10.0 = -10.0, minY = 0-5.0 = -5.0, w = 100+20.0 = 120.0, h = 50+10.0 = 60.0
+    assert _drawing_viewbox(content) == "-10.0 -5.0 120.0 60.0"
+
+
+def test_drawing_viewbox_falls_back_to_canvas_size_when_no_strokes():
+    content = {"canvas_width": 300, "canvas_height": 120, "strokes": []}
+    assert _drawing_viewbox(content) == "0 0 300 120"
+
+
+def test_drawing_viewbox_horizontal_line_has_positive_height():
+    content = {
+        "canvas_width": 100, "canvas_height": 100,
+        "strokes": [{"color": "#000", "base_width": 2.0, "points": [
+            {"x": 0.0, "y": 5.0, "pressure": 1.0, "time": 0},
+            {"x": 20.0, "y": 5.0, "pressure": 1.0, "time": 1},
+        ]}],
+    }
+    # y is constant across all points, so raw height = 0 -> floored to 1 before
+    # padding; height component (2nd-to-last field) must be > 0, not 0.
+    result = _drawing_viewbox(content)
+    height = float(result.split()[3])
+    assert height > 0
+    assert result == "-2.0 4.9 24.0 1.2"
 
 
 def test_week_page_shows_grid(admin):
@@ -144,12 +195,14 @@ def test_week_page_renders_drawing_as_inline_svg(admin):
     r = admin.get("/week/2026-W31")
     assert r.status_code == 200
     assert '<svg class="entry-drawing"' in r.text
-    assert 'viewBox="0 0 300 120"' in r.text
+    # points: (10.0,20.0), (15.0,22.0) -> width=max(5,1)=5, height=max(2,1)=2
+    # pad_x = 0.5, pad_y = 0.2 -> minX=9.5, minY=19.8, w=6.0, h=2.4
+    assert 'viewBox="9.5 19.8 6.0 2.4"' in r.text
     assert "10.0,20.0" in r.text
     assert "Zeichnung" not in r.text
 
 
-def test_week_page_stacks_text_and_drawing_in_the_same_cell(admin):
+def test_week_page_shows_text_and_drawing_together_in_the_same_cell(admin):
     conn = admin.app.state.db
     m = workers.create_worker(conn, "144", "Albrecht", "monteur")
     cell_id = f"2026-W31_{m['id']}_2026-07-30"
