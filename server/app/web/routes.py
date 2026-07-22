@@ -1,13 +1,16 @@
 import collections
 import pathlib
+from datetime import date
 from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from .. import db
 from .. import weeks as weeklib
+from ..repos import app_settings as app_settings_repo
 from ..repos import entries as entries_repo
 from ..repos import workers as workers_repo
 
@@ -15,6 +18,14 @@ TEMPLATES_DIR = pathlib.Path(__file__).resolve().parents[1] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 web_router = APIRouter()
+
+# Single source of truth for the fixed Azubi status vocabulary (label -> CSS
+# chip modifier). Azubi cells accept exactly one of these labels or an active
+# monteur's "{number} {name}", never free text - enforced in web_create_entry.
+AZUBI_STATUS_CLASS = {"Schule": "school", "Krank": "sick", "Urlaub": "vacation"}
+
+DRAG_FILL_TEXT_ARROW = "→"
+DRAG_FILL_ASSIGNMENT_ARROW = "----->"
 
 
 def require_admin(request: Request) -> None:
@@ -54,7 +65,7 @@ WEEKDAY_NAMES = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 def _grid_context(request: Request, week_id: str) -> dict:
     conn = request.app.state.db
     week = weeklib.get_or_create_week(conn, week_id)
-    dates = weeklib.week_dates(week_id)
+    dates = weeklib.visible_week_dates(conn, week_id)
     all_workers = [w for w in workers_repo.list_workers(conn) if w["active"]]
     by_cell = collections.defaultdict(list)
     for entry in entries_repo.entries_for_week(conn, week_id):
@@ -64,8 +75,8 @@ def _grid_context(request: Request, week_id: str) -> dict:
         "week": week,
         "week_id": week_id,
         "dates": dates,
-        "day_labels": [f"{WEEKDAY_NAMES[i]} {d.strftime('%d.%m.')}"
-                       for i, d in enumerate(dates)],
+        "day_labels": [f"{WEEKDAY_NAMES[d.weekday()]} {d.strftime('%d.%m.')}"
+                       for d in dates],
         "monteure": [w for w in all_workers if w["category"] == "monteur"],
         "azubis": [w for w in all_workers if w["category"] == "azubi"],
         "by_cell": by_cell,
@@ -73,6 +84,7 @@ def _grid_context(request: Request, week_id: str) -> dict:
         "prev_week": weeklib.adjacent_week_id(week_id, -1),
         "next_week": weeklib.adjacent_week_id(week_id, 1),
         "current_week": weeklib.current_week_id(),
+        "azubi_status_class": AZUBI_STATUS_CLASS,
     }
 
 
@@ -92,11 +104,11 @@ def _cell_context(request: Request, cell_id: str) -> dict:
     worker = workers_repo.get_worker(conn, worker_id)
     if worker is None:
         raise ValueError(worker_id)
-    cell_entries = [e for e in entries_repo.entries_for_week(conn, week_id)
-                    if e["cell_id"] == cell_id and e["conflict_of"] is None]
+    cell_entries = _existing_cell_entries(conn, week_id, cell_id)
     return {"worker": worker, "cell_id": cell_id, "cell_entries": cell_entries,
             "monteure": [w for w in workers_repo.list_workers(conn)
-                         if w["active"] and w["category"] == "monteur"]}
+                         if w["active"] and w["category"] == "monteur"],
+            "azubi_status_class": AZUBI_STATUS_CLASS}
 
 
 @web_router.get("/web/cells/{cell_id}")
@@ -131,17 +143,66 @@ async def _broadcast_cell(request: Request, cell_id: str) -> None:
         "revision": db.latest_revision(request.app.state.db)})
 
 
+def _existing_cell_entries(conn, week_id: str, cell_id: str) -> list[dict]:
+    return [e for e in entries_repo.entries_for_week(conn, week_id)
+            if e["cell_id"] == cell_id and e["conflict_of"] is None]
+
+
 @web_router.post("/web/cells/{cell_id}/entries")
-async def web_create_entry(cell_id: str, request: Request,
-                           text: str = Form(""), monteur: str = Form("")):
+async def web_create_entry(cell_id: str, request: Request, text: str = Form("")):
     require_admin(request)
     state = request.app.state
-    value = text.strip() or monteur.strip()
+    conn = state.db
+    value = text.strip()
+
+    try:
+        week_id, worker_id, _ = weeklib.parse_cell_id(cell_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="unbekannte Zelle")
+    worker = workers_repo.get_worker(conn, worker_id)
+
+    if worker is not None and worker["category"] == "azubi":
+        allowed = set(AZUBI_STATUS_CLASS) | {
+            f"{m['number']} {m['name']}" for m in workers_repo.list_workers(conn)
+            if m["category"] == "monteur" and m["active"]
+        }
+        if value and value not in allowed:
+            return _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error="Ungültige Auswahl")
+        existing = _existing_cell_entries(conn, week_id, cell_id)
+        try:
+            if not value:
+                for e in existing:
+                    entries_repo.delete_entry(conn, e["id"], "web", "web-admin")
+            elif existing:
+                entries_repo.update_entry(conn, existing[0]["id"], {"text": value},
+                                          existing[0]["revision"], "web", "web-admin",
+                                          state.settings)
+                for e in existing[1:]:
+                    entries_repo.delete_entry(conn, e["id"], "web", "web-admin")
+            else:
+                entries_repo.create_entry(conn, cell_id, "text", {"text": value},
+                                          "web", "web-admin", state.settings)
+        except entries_repo.ConflictError:
+            return _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error="Konflikt: Eintrag wurde parallel geändert")
+        except entries_repo.WeekLocked:
+            return _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error="Woche ist gesperrt")
+        except Exception as exc:
+            return _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error=str(exc))
+        await _broadcast_cell(request, cell_id)
+        response = _render_cell(request, cell_id)
+        response.headers["HX-Retarget"] = f"#cell-{cell_id}"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
+
     if not value:
         return _render_cell(request, cell_id, "partials/cell_edit.html",
                             error="Text fehlt")
     try:
-        entries_repo.create_entry(state.db, cell_id, "text", {"text": value},
+        entries_repo.create_entry(conn, cell_id, "text", {"text": value},
                                   "web", "web-admin", state.settings)
     except Exception as exc:
         return _render_cell(request, cell_id, "partials/cell_edit.html",
@@ -186,6 +247,63 @@ async def web_delete_entry(entry_id: str, request: Request):
                             "partials/cell_edit.html", error=str(exc))
     await _broadcast_cell(request, existing["cell_id"])
     return _render_cell(request, existing["cell_id"])
+
+
+class FillCellsIn(BaseModel):
+    target_cell_ids: list[str]
+
+
+@web_router.post("/web/cells/{origin_cell_id}/fill")
+async def web_fill_cells(origin_cell_id: str, payload: FillCellsIn, request: Request):
+    require_admin(request)
+    state = request.app.state
+    conn = state.db
+
+    try:
+        origin_week_id, origin_worker_id, origin_date_iso = weeklib.parse_cell_id(origin_cell_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="unbekannte Ursprungszelle")
+
+    origin_worker = workers_repo.get_worker(conn, origin_worker_id)
+    if origin_worker is None:
+        raise HTTPException(status_code=404, detail="unbekannter Mitarbeiter")
+
+    origin_entries = _existing_cell_entries(conn, origin_week_id, origin_cell_id)
+    if not origin_entries:
+        raise HTTPException(status_code=422, detail="Ursprungszelle ist leer")
+    origin_text = origin_entries[0]["content"]["text"]
+    origin_date = date.fromisoformat(origin_date_iso)
+
+    if origin_worker["category"] == "azubi" and origin_text in AZUBI_STATUS_CLASS:
+        fill_text = origin_text
+    elif origin_worker["category"] == "azubi":
+        fill_text = DRAG_FILL_ASSIGNMENT_ARROW
+    else:
+        fill_text = DRAG_FILL_TEXT_ARROW
+
+    filled: list[str] = []
+    for target_cell_id in payload.target_cell_ids:
+        try:
+            target_week_id, target_worker_id, target_date_iso = weeklib.parse_cell_id(target_cell_id)
+        except ValueError:
+            continue
+        if target_week_id != origin_week_id or target_worker_id != origin_worker_id:
+            continue
+        if date.fromisoformat(target_date_iso) <= origin_date:
+            continue
+        if _existing_cell_entries(conn, target_week_id, target_cell_id):
+            continue
+        try:
+            entries_repo.create_entry(conn, target_cell_id, "text", {"text": fill_text},
+                                      "web", "web-admin", state.settings)
+        except (entries_repo.ConflictError, entries_repo.WeekLocked):
+            continue
+        filled.append(target_cell_id)
+
+    for cell_id in filled:
+        await _broadcast_cell(request, cell_id)
+
+    return {"filled": filled}
 
 
 @web_router.get("/workers")
@@ -240,3 +358,22 @@ async def workers_update(worker_id: str, request: Request,
     except KeyError:
         raise HTTPException(status_code=404, detail="unbekannter Worker")
     return await _workers_redirect(request)
+
+
+@web_router.get("/settings")
+def settings_page(request: Request):
+    require_admin(request)
+    settings = app_settings_repo.get_display_settings(request.app.state.db)
+    return templates.TemplateResponse(request, "settings.html", {"settings": settings})
+
+
+@web_router.post("/settings")
+async def settings_update(request: Request, show_saturday: str = Form(None),
+                          show_sunday: str = Form(None)):
+    require_admin(request)
+    app_settings_repo.update_display_settings(
+        request.app.state.db, show_saturday == "1", show_sunday == "1")
+    await request.app.state.hub.broadcast({
+        "event": "settings.updated",
+        "revision": db.latest_revision(request.app.state.db)})
+    return RedirectResponse("/settings", status_code=303)

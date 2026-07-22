@@ -3,7 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="view-transition" content="same-origin">
   <title>TimePlan</title>
+  <script>
+    (function () {
+      var dir = sessionStorage.getItem("timeplan-swipe-dir");
+      if (dir) {
+        sessionStorage.removeItem("timeplan-swipe-dir");
+        document.documentElement.classList.add("swipe-" + dir);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
@@ -13,6 +23,7 @@
     <nav>
       <a href="/">Wochenplan</a>
       <a href="/workers">Monteure</a>
+      <a href="/settings">Einstellungen</a>
       <a href="/logout">Abmelden</a>
     </nav>
   </header>

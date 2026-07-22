@@ -1,25 +1,224 @@
+:root {
+  --paper-bg: #f9f1e3;
+  --paper-surface: #f1e6d6;
+  --paper-surface-alt: #e9dcc7;
+  --paper-rule: #d9c9ac;
+
+  --ink: #201a10;
+  --ink-muted: #5e574c;
+  --ink-faint: #6b6350;
+
+  --primary: #00579a;
+  --primary-dark: #003f70;
+  --on-primary: #ffffff;
+  --primary-surface: #dce9f2;
+
+  --status-school: #915d00;
+  --status-sick: #c53637;
+  --status-vacation: #23762c;
+  --on-status: #ffffff;
+
+  --radius: 6px;
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; color: #1f2937; }
-.topbar { display: flex; justify-content: space-between; align-items: center;
-  padding: .5rem 1rem; background: #1f2937; color: #fff; }
-.topbar a { color: #cbd5e1; margin-left: 1rem; text-decoration: none; }
-main { padding: 1rem; }
-.error { color: #b91c1c; }
-.login { max-width: 20rem; margin: 4rem auto; display: grid; gap: .5rem; }
-table.grid { border-collapse: collapse; width: 100%; table-layout: fixed; }
-.grid th, .grid td { border: 1px solid #d1d5db; padding: .25rem; vertical-align: top;
-  font-size: .85rem; overflow: hidden; }
-.grid th.worker { width: 9rem; text-align: left; background: #f3f4f6; }
-.grid thead th { background: #e5e7eb; }
-.grid td.cell { min-height: 3.5rem; height: 3.5rem; cursor: pointer; }
-.grid tr.azubi td.cell { height: 1.6rem; min-height: 1.6rem; white-space: nowrap; }
-.grid tr.separator td { background: #e5e7eb; font-weight: 600; }
-.entry.text { color: #1d4ed8; }
-.entry.text.tablet { color: #111827; }
-.entry.drawing { color: #6b7280; font-style: italic; }
-.weeknav { display: flex; gap: 1rem; align-items: center; margin-bottom: .75rem; }
-.cell form { display: grid; gap: .25rem; }
-.cell textarea, .cell input[type=text], .cell select { width: 100%; font: inherit; }
-.workers-page table { border-collapse: collapse; }
-.workers-page td, .workers-page th { border: 1px solid #d1d5db; padding: .3rem; }
-.flash-error { background: #fee2e2; color: #b91c1c; padding: .5rem; margin-bottom: .5rem; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--paper-bg);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1, h2 { color: var(--ink); }
+h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+h2 { font-size: 1.125rem; margin: 1.5rem 0 .5rem; color: var(--ink-muted); }
+
+/* Top bar */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .75rem 1.25rem; background: var(--primary); color: var(--on-primary);
+}
+.topbar strong { font-size: 1.0625rem; letter-spacing: .01em; }
+.topbar nav a {
+  color: var(--on-primary); margin-left: 1.25rem; text-decoration: none;
+  font-size: .9375rem; opacity: .92;
+}
+.topbar nav a:hover { opacity: 1; text-decoration: underline; }
+
+main { padding: 1.25rem; max-width: 88rem; margin: 0 auto; }
+
+.error {
+  color: var(--on-status); background: var(--status-sick);
+  padding: .5rem .75rem; border-radius: var(--radius); font-size: .875rem;
+}
+
+/* Login */
+.login {
+  max-width: 22rem; margin: 5rem auto; display: grid; gap: .75rem;
+  background: var(--paper-surface); padding: 2rem; border-radius: 10px;
+}
+.login h1 { margin-bottom: .25rem; }
+.login input[type=password] {
+  padding: .6rem .75rem; border: 1px solid var(--paper-rule);
+  border-radius: var(--radius); background: var(--paper-bg);
+  color: var(--ink); font-size: 1rem;
+}
+
+/* Buttons */
+button, .btn-primary {
+  font: inherit; cursor: pointer; border: none; border-radius: var(--radius);
+  padding: .55rem 1rem; background: var(--primary); color: var(--on-primary);
+  font-size: .9375rem;
+}
+button:hover, .btn-primary:hover { background: var(--primary-dark); }
+.btn-text {
+  background: transparent; color: var(--primary); padding: .55rem .75rem;
+}
+.btn-text:hover { background: var(--primary-surface); }
+
+/* Week navigation */
+.weeknav {
+  display: flex; gap: .75rem; align-items: center; margin-bottom: 1rem;
+  font-size: .9375rem;
+}
+.weeknav a {
+  color: var(--primary); text-decoration: none; padding: .4rem .7rem;
+  border-radius: var(--radius);
+}
+.weeknav a:hover { background: var(--primary-surface); }
+.weeknav strong { font-size: 1.0625rem; margin: 0 .25rem; }
+.weeknav .status {
+  color: var(--ink-muted); font-size: .8125rem; text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* Week grid */
+table.grid {
+  border-collapse: collapse; width: 100%; table-layout: fixed;
+  background: var(--paper-bg);
+}
+.grid thead th {
+  background: var(--paper-surface); border: 1px solid var(--paper-rule);
+  color: var(--ink-muted); font-size: .75rem; font-weight: 700;
+  letter-spacing: .03em; padding: .6rem .5rem; text-align: center;
+}
+.grid th.worker {
+  width: 10rem; text-align: left; background: var(--paper-surface);
+  color: var(--ink); font-size: .875rem;
+}
+.grid td, .grid th { border: 1px solid var(--paper-rule); }
+.grid td.cell {
+  min-height: 4rem; height: 4rem; padding: .4rem; vertical-align: top;
+  font-size: .875rem; overflow: hidden; cursor: pointer; background: var(--paper-bg);
+}
+.grid td.cell:hover { background: var(--paper-surface); }
+.grid tr.azubi td.cell {
+  height: 2.25rem; min-height: 2.25rem; white-space: nowrap;
+  padding: .3rem; vertical-align: middle;
+}
+.grid tr.azubi th.worker { font-size: .8125rem; padding: .35rem .5rem; }
+.grid tr.separator td {
+  background: var(--primary-surface); color: var(--primary);
+  font-weight: 700; font-size: .75rem; letter-spacing: .04em;
+  padding: .5rem; text-transform: uppercase;
+}
+
+.entry-text { color: var(--ink); }
+.entry-drawing { display: block; width: 100%; height: 34px; margin-top: 2px; }
+
+/* Status / assignment chips (Azubi cells) */
+.chip {
+  display: inline-block; padding: .2rem .55rem; border-radius: var(--radius);
+  font-size: .8125rem; font-weight: 600; white-space: nowrap;
+}
+.chip.status-school { background: var(--status-school); color: var(--on-status); }
+.chip.status-sick { background: var(--status-sick); color: var(--on-status); }
+.chip.status-vacation { background: var(--status-vacation); color: var(--on-status); }
+.chip.chip-assigned {
+  background: var(--primary-surface); color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+/* Cell editing */
+.cell.editing { background: var(--paper-surface); vertical-align: top; }
+.cell textarea, .cell input[type=text] {
+  width: 100%; font: inherit; padding: .5rem; border: 1px solid var(--paper-rule);
+  border-radius: var(--radius); background: var(--paper-surface-alt); color: var(--ink);
+  resize: vertical;
+}
+.cell-actions { display: flex; gap: .4rem; margin-top: .4rem; }
+.cell form { margin-bottom: .4rem; }
+
+.picker { display: flex; flex-direction: column; gap: .3rem; }
+.picker-label {
+  font-size: .6875rem; font-weight: 700; color: var(--ink-muted);
+  text-transform: uppercase; letter-spacing: .04em; margin: .4rem 0 .1rem;
+}
+.picker-label:first-child { margin-top: 0; }
+.chip-btn {
+  width: 100%; text-align: left; border-radius: var(--radius);
+  padding: .5rem .6rem; font-size: .875rem; font-weight: 600; border: none;
+}
+.chip-btn.status-school { background: var(--status-school); color: var(--on-status); }
+.chip-btn.status-sick { background: var(--status-sick); color: var(--on-status); }
+.chip-btn.status-vacation { background: var(--status-vacation); color: var(--on-status); }
+.chip-btn.chip-assigned {
+  background: var(--primary-surface); color: var(--primary);
+  border: 1px solid var(--primary);
+}
+.chip-btn.chip-clear { background: var(--paper-surface-alt); color: var(--ink-muted); }
+.chip-btn:hover { filter: brightness(0.94); }
+
+/* Workers admin */
+.workers-page table { border-collapse: collapse; width: 100%; margin-bottom: .5rem; }
+.workers-page td, .workers-page th {
+  border: 1px solid var(--paper-rule); padding: .5rem; font-size: .875rem;
+}
+.workers-page th { background: var(--paper-surface); color: var(--ink-muted); text-align: left; }
+.workers-page input[type=text], .workers-page input:not([type]) {
+  font: inherit; padding: .35rem .5rem; border: 1px solid var(--paper-rule);
+  border-radius: var(--radius); background: var(--paper-bg); color: var(--ink); width: 100%;
+}
+.workers-page form { display: contents; }
+.flash-error {
+  background: var(--status-sick); color: var(--on-status);
+  padding: .6rem .75rem; border-radius: var(--radius); margin-bottom: 1rem;
+  font-size: .875rem;
+}
+
+/* Cell edit dialog (Azubi-Picker) */
+dialog#cell-dialog {
+  padding: 1.25rem; border: none; border-radius: 10px;
+  background: var(--paper-surface); color: var(--ink);
+  max-width: 20rem; width: 90vw;
+}
+dialog#cell-dialog::backdrop { background: rgba(32, 26, 16, 0.45); }
+dialog#cell-dialog .error { margin-bottom: .75rem; }
+
+/* Wochen-Wischnavigation: gerichteter Übergang via View Transitions API */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: .25s;
+  animation-timing-function: ease-out;
+}
+html.swipe-next::view-transition-old(root) { animation-name: timeplan-slide-out-left; }
+html.swipe-next::view-transition-new(root) { animation-name: timeplan-slide-in-right; }
+html.swipe-prev::view-transition-old(root) { animation-name: timeplan-slide-out-right; }
+html.swipe-prev::view-transition-new(root) { animation-name: timeplan-slide-in-left; }
+
+@keyframes timeplan-slide-out-left { to { transform: translateX(-100%); } }
+@keyframes timeplan-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes timeplan-slide-out-right { to { transform: translateX(100%); } }
+@keyframes timeplan-slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+/* Drag-to-Fill: Pfeil-Overlay + markierte Zielzellen */
+#dragfill-arrow-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  pointer-events: none; z-index: 50; display: none;
+}
+#dragfill-arrow-line { stroke: var(--primary); stroke-width: 3; }
+#dragfill-arrow-head { fill: var(--primary); }
+.grid td.cell.dragfill-marked { background: var(--primary-surface); }

@@ -2,7 +2,7 @@ services:
   timeplan:
     build: ./server
     ports:
-      - "8081:8000"
+      - "8000:8000"
     environment:
       TIMEPLAN_SECRET_KEY: ${TIMEPLAN_SECRET_KEY:?TIMEPLAN_SECRET_KEY setzen}
       TIMEPLAN_ADMIN_PASSWORD: ${TIMEPLAN_ADMIN_PASSWORD:?TIMEPLAN_ADMIN_PASSWORD setzen}

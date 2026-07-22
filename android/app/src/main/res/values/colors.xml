@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paper surfaces -->
+    <color name="paper_bg">#F9F1E3</color>
+    <color name="paper_surface">#F1E6D6</color>
+    <color name="paper_surface_alt">#E9DCC7</color>
+    <color name="paper_rule">#D9C9AC</color>
+
+    <!-- Ink -->
+    <color name="ink">#201A10</color>
+    <color name="ink_muted">#5E574C</color>
+    <color name="ink_faint">#8A8272</color>
+
+    <!-- Brand: blueprint blue -->
+    <color name="primary">#00579A</color>
+    <color name="primary_dark">#003F70</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_surface">#DCE9F2</color>
+
+    <!-- Azubi status colors -->
+    <color name="status_school">#915D00</color>
+    <color name="status_sick">#C53637</color>
+    <color name="status_vacation">#23762C</color>
+    <color name="on_status">#FFFFFF</color>
+
+    <!-- Utility -->
+    <color name="transparent">#00000000</color>
+</resources>

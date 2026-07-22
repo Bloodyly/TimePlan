@@ -10,7 +10,8 @@
           htmx.ajax("GET", "/web/cells/" + ev.cell_id,
                     { target: el, swap: "outerHTML" });
         }
-      } else if (ev.event === "workers.updated" || ev.event === "week.updated") {
+      } else if (ev.event === "workers.updated" || ev.event === "week.updated"
+                 || ev.event === "settings.updated") {
         location.reload();
       }
     };

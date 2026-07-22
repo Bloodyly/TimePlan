@@ -1,0 +1,51 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.TimePlan" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorAccent">@color/primary</item>
+        <item name="colorSecondary">@color/primary</item>
+        <item name="colorOnSecondary">@color/on_primary</item>
+        <item name="colorSurface">@color/paper_surface</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="android:colorBackground">@color/paper_bg</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorSecondary">@color/ink_muted</item>
+        <item name="android:windowBackground">@color/paper_bg</item>
+        <item name="android:statusBarColor">@color/paper_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="android:navigationBarColor">@color/paper_bg</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="alertDialogTheme">@style/Theme.TimePlan.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/Theme.TimePlan.Dialog</item>
+    </style>
+
+    <style name="Theme.TimePlan.Dialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorAccent">@color/primary</item>
+        <item name="colorSurface">@color/paper_surface</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="android:windowBackground">@color/paper_surface</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TimePlan.Dialog.Title</item>
+    </style>
+
+    <style name="TimePlan.Dialog.Title" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textColor">@color/ink</item>
+    </style>
+
+    <style name="TimePlan.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+        <item name="cornerRadius">6dp</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="TimePlan.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+</resources>

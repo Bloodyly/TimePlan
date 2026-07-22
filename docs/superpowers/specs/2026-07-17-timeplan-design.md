@@ -174,9 +174,20 @@ Verhalten:
   vorhandene Strokes werden geladen und sind bearbeitbar
 - Zellen-Tipp bei Azubis öffnet eine Schnellauswahl der aktiven Monteure
   (plus freie Texteingabe) – erzeugt einen Text-Entry, keine Zeichnung
-- S-Pen mit Druckstärke; Palm-Rejection über `TOOL_TYPE_STYLUS`, Fingereingabe
-  optional zuschaltbar; Undo/Redo/Löschen
-- Einstellungsseite: Server-URL, Gerätename, Token – nichts hartkodiert
+- S-Pen mit Druckstärke; Palm-Rejection über `TOOL_TYPE_STYLUS` per Default.
+  Einstellung **„Eintragungen nur via Stift"** (persistiert wie Server-URL/
+  Gerätename/Token) schaltet die Palm-Rejection um:
+  - **ein** (Produktivbetrieb Galaxy Tab Active3): nur `TOOL_TYPE_STYLUS`
+    erzeugt Striche, Fingerberührung wird ignoriert (Palm-Rejection beim
+    Schreiben)
+  - **aus** (Test auf beliebigem Tablet ohne S-Pen): Finger und Stift
+    erzeugen beide Striche, keine Palm-Rejection
+  - Default: **aus**, damit ein frisch installiertes Test-Tablet ohne
+    Konfigurationsschritt sofort mit Fingereingabe nutzbar ist; vor dem
+    produktiven Einbau ins 3D-Gehäuse wird bewusst auf „ein" umgestellt
+  - Undo/Redo/Löschen unabhängig vom Eingabemodus
+- Einstellungsseite: Server-URL, Gerätename, Token, „Eintragungen nur via
+  Stift" – nichts hartkodiert
 - Kiosk-Betrieb (letzte Phase): Autostart via `BOOT_COMPLETED`,
   Lock-Task-/Screen-Pinning
 
@@ -227,6 +238,9 @@ zusätzlich pro Meilenstein:
   Uploads, ungültige/übergroße Payloads)
 - WebUI: Smoke-Tests der zentralen Flows über Template-Rendering-Tests
 - Android: Unit-Tests für Sync-Queue/Revisionslogik; Instrumented Tests fürs
-  Raster; manuelle S-Pen-Tests auf dem Zielgerät
+  Raster; Zeichenfläche zunächst mit Fingereingabe auf beliebigem Testgerät
+  verifizierbar (Einstellung „Eintragungen nur via Stift" = aus); vor
+  Produktivsetzung zusätzlich manuelle S-Pen-Tests auf dem Zielgerät
+  (Galaxy Tab Active3) mit der Einstellung = ein
 - Ende-zu-Ende je Meilenstein 4+: WebUI-Eingabe ↔ Tablet-Anzeige gegen den im
   Portainer deployten Stack

@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">TimePlan</string>
+    <string name="azubi_separator">Mitarb. / Azubis</string>
+    <string name="hint_base_url">http://planer-server:8000</string>
+    <string name="hint_device_id">Gerätekennung (z.B. tablet-01)</string>
+    <string name="hint_token">Geräte-Token</string>
+    <string name="save">Speichern</string>
+    <string name="settings_incomplete">Bitte alle Felder ausfüllen</string>
+    <string name="settings_invalid_url">Server-URL muss mit http:// oder https:// beginnen</string>
+    <string name="prev_week">◀</string>
+    <string name="next_week">▶</string>
+    <string name="today">Heute</string>
+    <string name="settings">Einstellungen</string>
+    <string name="demo_badge">DEMO</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="clear_config">Konfiguration löschen</string>
+    <string name="column_header_worker">Monteur</string>
+    <string name="azubi_picker_title_status">Status</string>
+    <string name="azubi_picker_title_assign">Monteur zuordnen</string>
+    <string name="azubi_picker_clear">Leeren</string>
+    <string name="drawing_clear">Löschen</string>
+    <string name="drawing_undo">Rückgängig</string>
+    <string name="drawing_redo">Wiederholen</string>
+</resources>

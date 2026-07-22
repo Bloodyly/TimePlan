@@ -41,7 +41,7 @@ def get_week(week_id: str, request: Request):
     conn = request.app.state.db
     try:
         week = weeklib.get_or_create_week(conn, week_id)
-        dates = [d.isoformat() for d in weeklib.week_dates(week_id)]
+        dates = [d.isoformat() for d in weeklib.visible_week_dates(conn, week_id)]
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return {"week": week, "dates": dates,

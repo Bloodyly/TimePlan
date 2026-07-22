@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="weeknav">
-  <a href="/week/{{ prev_week }}">&larr; Vorherige</a>
+  <a href="/week/{{ prev_week }}" class="weeknav-prev">&larr; Vorherige</a>
   <strong>{{ week_id }}</strong>
   <span class="status">[{{ week.status }}]</span>
-  <a href="/week/{{ next_week }}">Nächste &rarr;</a>
+  <a href="/week/{{ next_week }}" class="weeknav-next">Nächste &rarr;</a>
   <a href="/week/{{ current_week }}">Heute</a>
 </div>
 <table class="grid" data-week="{{ week_id }}">
@@ -26,7 +26,7 @@
       {% endfor %}
     </tr>
     {% endfor %}
-    <tr class="separator"><td colspan="8">Mitarb. / Azubis</td></tr>
+    <tr class="separator"><td colspan="{{ dates|length + 1 }}">Mitarb. / Azubis</td></tr>
     {% for worker in azubis %}
     <tr class="azubi">
       <th class="worker">{{ worker.number }} {{ worker.name }}</th>
@@ -40,5 +40,15 @@
     {% endfor %}
   </tbody>
 </table>
+<dialog id="cell-dialog">
+  <div id="cell-dialog-body"
+       hx-on::after-swap="if (!this.closest('dialog').open) this.closest('dialog').showModal()"></div>
+</dialog>
+<svg id="dragfill-arrow-overlay">
+  <line id="dragfill-arrow-line"></line>
+  <polygon id="dragfill-arrow-head"></polygon>
+</svg>
 <script src="/static/live.js" defer></script>
+<script src="/static/swipe.js" defer></script>
+<script src="/static/dragfill.js" defer></script>
 {% endblock %}

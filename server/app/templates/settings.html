@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="workers-page">
+  <h1>Einstellungen</h1>
+  <form method="post" action="/settings">
+    <p>
+      <label>
+        <input type="checkbox" name="show_saturday" value="1"
+               {% if settings.show_saturday %}checked{% endif %}>
+        Samstag anzeigen
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type="checkbox" name="show_sunday" value="1"
+               {% if settings.show_sunday %}checked{% endif %}>
+        Sonntag anzeigen
+      </label>
+    </p>
+    <button type="submit" class="btn-primary">Speichern</button>
+  </form>
+</div>
+{% endblock %}

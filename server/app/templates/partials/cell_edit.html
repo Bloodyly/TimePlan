@@ -1,36 +1,60 @@
+{% if worker.category == "azubi" %}
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <div class="picker">
+    <p class="picker-label">Status</p>
+    {% for label, css_class in azubi_status_class.items() %}
+    <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-dialog-body" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.xhr.getResponseHeader('HX-Retarget')) document.getElementById('cell-dialog').close()">
+      <input type="hidden" name="text" value="{{ label }}">
+      <button type="submit" class="chip-btn status-{{ css_class }}">{{ label }}</button>
+    </form>
+    {% endfor %}
+
+    <p class="picker-label">Monteur zuordnen</p>
+    {% for m in monteure %}
+    <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-dialog-body" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.xhr.getResponseHeader('HX-Retarget')) document.getElementById('cell-dialog').close()">
+      <input type="hidden" name="text" value="{{ m.number }} {{ m.name }}">
+      <button type="submit" class="chip-btn chip-assigned">{{ m.number }} {{ m.name }}</button>
+    </form>
+    {% endfor %}
+
+    <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-dialog-body" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.xhr.getResponseHeader('HX-Retarget')) document.getElementById('cell-dialog').close()">
+      <input type="hidden" name="text" value="">
+      <button type="submit" class="chip-btn chip-clear">Leeren</button>
+    </form>
+  </div>
+  <button type="button" class="btn-text" onclick="document.getElementById('cell-dialog').close()">Abbrechen</button>
+{% else %}
 <td class="cell editing" id="cell-{{ cell_id }}">
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   {% for entry in cell_entries if entry.type == "text" %}
   <form hx-post="/web/entries/{{ entry.id }}" hx-target="#cell-{{ cell_id }}"
         hx-swap="outerHTML">
     <input type="hidden" name="base_revision" value="{{ entry.revision }}">
-    <textarea name="text" rows="2">{{ entry.content.text }}</textarea>
-    <button type="submit">Speichern</button>
-    <button type="button" hx-post="/web/entries/{{ entry.id }}/delete"
-            hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
+    <textarea name="text" rows="3">{{ entry.content.text }}</textarea>
+    <div class="cell-actions">
+      <button type="submit" class="btn-primary">Speichern</button>
+      <button type="button" class="btn-text" hx-post="/web/entries/{{ entry.id }}/delete"
+              hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
+    </div>
   </form>
   {% endfor %}
   {% for entry in cell_entries if entry.type == "drawing" %}
-  <div class="entry drawing">&#9998; Zeichnung (nur am Tablet bearbeitbar)
-    <button type="button" hx-post="/web/entries/{{ entry.id }}/delete"
+  <div class="entry-drawing">&#9998; Zeichnung (nur am Tablet bearbeitbar)
+    <button type="button" class="btn-text" hx-post="/web/entries/{{ entry.id }}/delete"
             hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
   </div>
   {% endfor %}
   <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-{{ cell_id }}"
         hx-swap="outerHTML">
-    {% if worker.category == "azubi" %}
-    <select name="monteur">
-      <option value="">— Monteur wählen —</option>
-      {% for m in monteure %}
-      <option value="{{ m.number }} {{ m.name }}">{{ m.number }} {{ m.name }}</option>
-      {% endfor %}
-    </select>
-    <input type="text" name="text" placeholder="oder freier Text">
-    {% else %}
-    <textarea name="text" rows="2" placeholder="Neuer Hinweis"></textarea>
-    {% endif %}
-    <button type="submit">Hinzufügen</button>
-    <button type="button" hx-get="/web/cells/{{ cell_id }}"
-            hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Abbrechen</button>
+    <textarea name="text" rows="3" placeholder="Neuer Hinweis"></textarea>
+    <div class="cell-actions">
+      <button type="submit" class="btn-primary">Hinzufügen</button>
+      <button type="button" class="btn-text" hx-get="/web/cells/{{ cell_id }}"
+              hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Abbrechen</button>
+    </div>
   </form>
 </td>
+{% endif %}

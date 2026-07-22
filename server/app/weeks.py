@@ -2,6 +2,7 @@ import datetime
 import re
 
 from . import db
+from .repos import app_settings as app_settings_repo
 
 WEEK_RE = re.compile(r"^(\d{4})-W(\d{2})$")
 
@@ -18,6 +19,14 @@ def parse_week_id(week_id: str) -> tuple[int, int]:
 def week_dates(week_id: str) -> list[datetime.date]:
     year, week = parse_week_id(week_id)
     return [datetime.date.fromisocalendar(year, week, d) for d in range(1, 8)]
+
+
+def visible_week_dates(conn, week_id: str) -> list[datetime.date]:
+    settings = app_settings_repo.get_display_settings(conn)
+    return [d for d in week_dates(week_id)
+            if d.weekday() < 5
+            or (d.weekday() == 5 and settings["show_saturday"])
+            or (d.weekday() == 6 and settings["show_sunday"])]
 
 
 def current_week_id(today: datetime.date | None = None) -> str:

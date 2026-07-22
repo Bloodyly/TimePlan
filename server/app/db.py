@@ -54,6 +54,14 @@ CREATE TABLE IF NOT EXISTS audit_log(
   entity_id TEXT NOT NULL,
   detail TEXT
 );
+CREATE TABLE IF NOT EXISTS app_settings(
+  id INTEGER PRIMARY KEY CHECK(id = 1),
+  show_saturday INTEGER NOT NULL DEFAULT 1,
+  show_sunday INTEGER NOT NULL DEFAULT 1,
+  revision INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO app_settings(id, show_saturday, show_sunday, revision)
+  VALUES (1, 1, 1, 0);
 """
 
 
