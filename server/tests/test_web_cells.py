@@ -324,6 +324,55 @@ def test_fill_cells_rejects_empty_origin(admin):
     assert r.status_code == 422
 
 
+def test_fill_cells_rejects_drawing_only_origin(admin):
+    # A cell that only holds a tablet drawing (no text) has nothing for
+    # drag-fill to propagate - it must be treated the same as an empty
+    # origin (422), not crash trying to read a "text" key that a drawing's
+    # content dict doesn't have.
+    conn = admin.app.state.db
+    settings = admin.app.state.settings
+    _, cell_id = _cell(conn, "monteur")
+    drawing_content = {
+        "canvas_width": 100, "canvas_height": 50,
+        "strokes": [{"color": "#000000", "base_width": 2.0,
+                     "points": [{"x": 1, "y": 1, "pressure": 0.5, "time": 0}]}],
+    }
+    entries.create_entry(conn, cell_id, "drawing", drawing_content,
+                         "tablet", "tablet-01", settings)
+    r = admin.post(f"/web/cells/{cell_id}/fill", json={"target_cell_ids": []})
+    assert r.status_code == 422
+
+
+def test_fill_cells_uses_text_entry_even_when_a_drawing_entry_is_also_present(admin, device_headers):
+    # Monteur cells can independently hold both a web-authored text entry and
+    # a tablet-authored drawing entry. Drag-fill must always pick the text
+    # entry as its origin value regardless of which of the two entries was
+    # created first (entries are otherwise ordered by created_at, so the
+    # drawing could easily sort before the text).
+    conn = admin.app.state.db
+    settings = admin.app.state.settings
+    _, cell_id = _cell(conn, "monteur")  # Do 2026-07-30
+    drawing_content = {
+        "canvas_width": 100, "canvas_height": 50,
+        "strokes": [{"color": "#000000", "base_width": 2.0,
+                     "points": [{"x": 1, "y": 1, "pressure": 0.5, "time": 0}]}],
+    }
+    entries.create_entry(conn, cell_id, "drawing", drawing_content,
+                         "tablet", "tablet-01", settings)
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": "Baustelle A"})
+
+    worker_id = cell_id.split("_")[1]
+    target = f"2026-W31_{worker_id}_2026-07-31"  # Fr, nach dem Ursprung
+
+    r = admin.post(f"/web/cells/{cell_id}/fill", json={"target_cell_ids": [target]})
+    assert r.status_code == 200
+    assert r.json()["filled"] == [target]
+
+    api = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    entry = next(e for e in api["entries"] if e["cell_id"] == target)
+    assert entry["content"]["text"] == "→"
+
+
 def test_fill_cells_ignores_targets_in_different_worker_row(admin, device_headers):
     conn = admin.app.state.db
     _, cell_id = _cell(conn, "monteur")  # Do 2026-07-30

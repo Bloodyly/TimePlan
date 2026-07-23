@@ -291,7 +291,8 @@ async def web_fill_cells(origin_cell_id: str, payload: FillCellsIn, request: Req
     if origin_worker is None:
         raise HTTPException(status_code=404, detail="unbekannter Mitarbeiter")
 
-    origin_entries = _existing_cell_entries(conn, origin_week_id, origin_cell_id)
+    origin_entries = [e for e in _existing_cell_entries(conn, origin_week_id, origin_cell_id)
+                      if e["type"] == "text"]
     if not origin_entries:
         raise HTTPException(status_code=422, detail="Ursprungszelle ist leer")
     origin_text = origin_entries[0]["content"]["text"]
