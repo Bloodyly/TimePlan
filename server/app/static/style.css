@@ -136,6 +136,10 @@ table.grid {
   display: block; position: absolute; inset: .4rem; width: auto; height: auto;
   z-index: 0; pointer-events: none;
 }
+.drawing-note {
+  color: var(--ink-muted); font-size: .8125rem; margin-top: .4rem;
+  display: flex; align-items: center; gap: .5rem;
+}
 
 /* Status / assignment chips (Azubi cells) */
 .chip {

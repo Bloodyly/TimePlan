@@ -43,12 +43,64 @@ def test_create_update_delete_entry_via_web(admin, device_headers):
     api = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
     entry = api["entries"][0]
     assert entry["author_type"] == "web"
-    r2 = admin.post(f"/web/entries/{entry['id']}",
-                    data={"text": "Geändert", "base_revision": entry["revision"]})
-    assert "Geändert" in r2.text
-    r3 = admin.post(f"/web/entries/{entry['id']}/delete")
+
+    r2 = admin.post(f"/web/cells/{cell_id}/entries", data={"text": "Geändert"})
+    assert r2.status_code == 200
+    api2 = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    assert len(api2["entries"]) == 1
+    assert api2["entries"][0]["content"]["text"] == "Geändert"
+
+    r3 = admin.post(f"/web/cells/{cell_id}/entries", data={"text": ""})
     assert r3.status_code == 200
-    assert "Geändert" not in r3.text
+    api3 = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    assert api3["entries"] == []
+
+
+def test_monteur_autosave_updates_in_place_then_deletes_on_empty(admin, device_headers):
+    conn = admin.app.state.db
+    _, cell_id = _cell(conn)
+
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": "A"})
+    api = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    text_entries = [e for e in api["entries"] if e["type"] == "text"]
+    assert len(text_entries) == 1
+    assert text_entries[0]["content"]["text"] == "A"
+
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": "B"})
+    api2 = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    text_entries2 = [e for e in api2["entries"] if e["type"] == "text"]
+    assert len(text_entries2) == 1
+    assert text_entries2[0]["content"]["text"] == "B"
+
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": ""})
+    api3 = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    text_entries3 = [e for e in api3["entries"] if e["type"] == "text"]
+    assert text_entries3 == []
+
+
+def test_monteur_text_autosave_does_not_touch_drawing_entry(admin, device_headers):
+    conn = admin.app.state.db
+    settings = admin.app.state.settings
+    _, cell_id = _cell(conn)
+
+    drawing_content = {
+        "canvas_width": 100, "canvas_height": 50,
+        "strokes": [{"color": "#000000", "base_width": 2.0,
+                     "points": [{"x": 1, "y": 1, "pressure": 0.5, "time": 0}]}],
+    }
+    drawing = entries.create_entry(conn, cell_id, "drawing", drawing_content,
+                                   "tablet", "tablet-01", settings)
+
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": "Notiz"})
+    admin.post(f"/web/cells/{cell_id}/entries", data={"text": ""})
+
+    api = admin.get("/api/v1/weeks/2026-W31", headers=device_headers).json()
+    drawing_entries = [e for e in api["entries"] if e["type"] == "drawing"]
+    assert len(drawing_entries) == 1
+    assert drawing_entries[0]["id"] == drawing["id"]
+    assert drawing_entries[0]["content"] == drawing_content
+    text_entries = [e for e in api["entries"] if e["type"] == "text"]
+    assert text_entries == []
 
 
 def test_azubi_picker_selects_status(admin, device_headers):

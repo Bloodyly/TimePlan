@@ -125,7 +125,10 @@ def _cell_context(request: Request, cell_id: str) -> dict:
     if worker is None:
         raise ValueError(worker_id)
     cell_entries = _existing_cell_entries(conn, week_id, cell_id)
+    existing_text = next(
+        (e["content"]["text"] for e in cell_entries if e["type"] == "text"), "")
     return {"worker": worker, "cell_id": cell_id, "cell_entries": cell_entries,
+            "existing_text": existing_text,
             "monteure": [w for w in workers_repo.list_workers(conn)
                          if w["active"] and w["category"] == "monteur"],
             "azubi_status_class": AZUBI_STATUS_CLASS}
@@ -218,39 +221,39 @@ async def web_create_entry(cell_id: str, request: Request, text: str = Form(""))
         response.headers["HX-Reswap"] = "outerHTML"
         return response
 
-    if not value:
-        return _render_cell(request, cell_id, "partials/cell_edit.html",
-                            error="Text fehlt")
+    existing = [e for e in _existing_cell_entries(conn, week_id, cell_id) if e["type"] == "text"]
     try:
-        entries_repo.create_entry(conn, cell_id, "text", {"text": value},
-                                  "web", "web-admin", state.settings)
+        if not value:
+            for e in existing:
+                entries_repo.delete_entry(conn, e["id"], "web", "web-admin")
+        elif existing:
+            entries_repo.update_entry(conn, existing[0]["id"], {"text": value},
+                                      existing[0]["revision"], "web", "web-admin",
+                                      state.settings)
+            for e in existing[1:]:
+                entries_repo.delete_entry(conn, e["id"], "web", "web-admin")
+        else:
+            entries_repo.create_entry(conn, cell_id, "text", {"text": value},
+                                      "web", "web-admin", state.settings)
+    except entries_repo.ConflictError:
+        response = _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error="Konflikt: Eintrag wurde parallel geändert")
+        response.headers["HX-Retarget"] = f"#cell-{cell_id}"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
+    except entries_repo.WeekLocked:
+        response = _render_cell(request, cell_id, "partials/cell_edit.html",
+                                error="Woche ist gesperrt")
+        response.headers["HX-Retarget"] = f"#cell-{cell_id}"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
     except Exception as exc:
-        return _render_cell(request, cell_id, "partials/cell_edit.html",
-                            error=str(exc))
+        response = _render_cell(request, cell_id, "partials/cell_edit.html", error=str(exc))
+        response.headers["HX-Retarget"] = f"#cell-{cell_id}"
+        response.headers["HX-Reswap"] = "outerHTML"
+        return response
     await _broadcast_cell(request, cell_id)
     return _render_cell(request, cell_id)
-
-
-@web_router.post("/web/entries/{entry_id}")
-async def web_update_entry(entry_id: str, request: Request,
-                           text: str = Form(...), base_revision: int = Form(...)):
-    require_admin(request)
-    state = request.app.state
-    existing = entries_repo.get_entry(state.db, entry_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="unbekannter Eintrag")
-    try:
-        entries_repo.update_entry(state.db, entry_id, {"text": text.strip()},
-                                  base_revision, "web", "web-admin", state.settings)
-    except entries_repo.ConflictError:
-        return _render_cell(request, existing["cell_id"],
-                            "partials/cell_edit.html",
-                            error="Konflikt: Eintrag wurde parallel geändert")
-    except Exception as exc:
-        return _render_cell(request, existing["cell_id"],
-                            "partials/cell_edit.html", error=str(exc))
-    await _broadcast_cell(request, existing["cell_id"])
-    return _render_cell(request, existing["cell_id"])
 
 
 @web_router.post("/web/entries/{entry_id}/delete")

@@ -29,32 +29,17 @@
 {% else %}
 <td class="cell editing" id="cell-{{ cell_id }}">
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
-  {% for entry in cell_entries if entry.type == "text" %}
-  <form hx-post="/web/entries/{{ entry.id }}" hx-target="#cell-{{ cell_id }}"
-        hx-swap="outerHTML">
-    <input type="hidden" name="base_revision" value="{{ entry.revision }}">
-    <textarea name="text" rows="3">{{ entry.content.text }}</textarea>
-    <div class="cell-actions">
-      <button type="submit" class="btn-primary">Speichern</button>
-      <button type="button" class="btn-text" hx-post="/web/entries/{{ entry.id }}/delete"
-              hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
-    </div>
-  </form>
-  {% endfor %}
+  <textarea name="text" rows="3" placeholder="Hinweis eingeben"
+            hx-post="/web/cells/{{ cell_id }}/entries"
+            hx-trigger="input changed delay:500ms, blur"
+            hx-target="this" hx-swap="none"
+            hx-on::after-request="if (document.activeElement !== this) htmx.ajax('GET', '/web/cells/{{ cell_id }}', {target: '#cell-{{ cell_id }}', swap: 'outerHTML'})"
+            autofocus>{{ existing_text }}</textarea>
   {% for entry in cell_entries if entry.type == "drawing" %}
-  <div class="entry-drawing">&#9998; Zeichnung (nur am Tablet bearbeitbar)
+  <div class="drawing-note">&#9998; Zeichnung (nur am Tablet bearbeitbar)
     <button type="button" class="btn-text" hx-post="/web/entries/{{ entry.id }}/delete"
             hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Löschen</button>
   </div>
   {% endfor %}
-  <form hx-post="/web/cells/{{ cell_id }}/entries" hx-target="#cell-{{ cell_id }}"
-        hx-swap="outerHTML">
-    <textarea name="text" rows="3" placeholder="Neuer Hinweis"></textarea>
-    <div class="cell-actions">
-      <button type="submit" class="btn-primary">Hinzufügen</button>
-      <button type="button" class="btn-text" hx-get="/web/cells/{{ cell_id }}"
-              hx-target="#cell-{{ cell_id }}" hx-swap="outerHTML">Abbrechen</button>
-    </div>
-  </form>
 </td>
 {% endif %}
