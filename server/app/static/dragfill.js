@@ -1,6 +1,7 @@
 (function () {
   var LONG_PRESS_MS = 450;
   var MOVE_SLOP = 10;
+  var SYNTHETIC_MOUSE_WINDOW_MS = 500;
 
   var timer = null;
   var armed = false;
@@ -9,6 +10,11 @@
   var rowCells = [];
   var originIndex = -1;
   var startX = 0, startY = 0;
+  var lastTouchTime = 0;
+
+  function isSyntheticMouseEvent() {
+    return Date.now() - lastTouchTime < SYNTHETIC_MOUSE_WINDOW_MS;
+  }
 
   function cellHasContent(td) {
     return td.textContent.trim().length > 0;
@@ -55,32 +61,28 @@
     updateArrow(originX, originY, originX);
   }
 
-  document.addEventListener("touchstart", function (e) {
-    reset();
-    var td = e.target.closest("td.cell");
-    if (!td || !cellHasContent(td) || e.touches.length !== 1) return;
-    var touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
+  function armPending(x, y, target) {
+    var td = target.closest("td.cell");
+    if (!td || !cellHasContent(td)) return;
+    startX = x;
+    startY = y;
     originCell = td;
     timer = setTimeout(arm, LONG_PRESS_MS);
-  }, { passive: true });
+  }
 
-  document.addEventListener("touchmove", function (e) {
+  function handleMove(x, y) {
     if (timer && !armed) {
-      var touch = e.touches[0];
-      if (Math.abs(touch.clientX - startX) > MOVE_SLOP || Math.abs(touch.clientY - startY) > MOVE_SLOP) {
+      if (Math.abs(x - startX) > MOVE_SLOP || Math.abs(y - startY) > MOVE_SLOP) {
         clearTimeout(timer);
         timer = null;
       }
       return;
     }
     if (!armed) return;
-    var touch = e.touches[0];
     var rect = originCell.getBoundingClientRect();
     var originX = rect.left + rect.width / 2;
     var originY = rect.top + rect.height / 2;
-    var clampedX = Math.max(touch.clientX, originX);
+    var clampedX = Math.max(x, originX);
     updateArrow(originX, originY, clampedX);
 
     for (var i = originIndex + 1; i < rowCells.length; i++) {
@@ -92,9 +94,9 @@
         rowCells[i].classList.remove("dragfill-marked");
       }
     }
-  }, { passive: true });
+  }
 
-  document.addEventListener("touchend", function () {
+  function handleEnd() {
     if (!armed) { reset(); return; }
     var targetIds = [];
     for (var i = originIndex + 1; i < rowCells.length; i++) {
@@ -115,7 +117,53 @@
         if (el) htmx.ajax("GET", "/web/cells/" + cellId, { target: el, swap: "outerHTML" });
       });
     }).catch(function (err) { console.error("drag-fill request failed", err); });
+  }
+
+  // Touch input (tablets/touchscreens)
+  document.addEventListener("touchstart", function (e) {
+    lastTouchTime = Date.now();
+    reset();
+    if (e.touches.length !== 1) return;
+    var touch = e.touches[0];
+    armPending(touch.clientX, touch.clientY, e.target);
   }, { passive: true });
 
-  document.addEventListener("touchcancel", reset, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    lastTouchTime = Date.now();
+    var touch = e.touches[0];
+    if (!touch) return;
+    handleMove(touch.clientX, touch.clientY);
+  }, { passive: true });
+
+  document.addEventListener("touchend", function () {
+    lastTouchTime = Date.now();
+    handleEnd();
+  }, { passive: true });
+
+  document.addEventListener("touchcancel", function () {
+    lastTouchTime = Date.now();
+    reset();
+  }, { passive: true });
+
+  // Mouse input (desktop browsers). Guarded against synthetic mouse events
+  // that touchscreens fire shortly after real touch events, so the two
+  // input paths don't double-trigger on hybrid devices.
+  document.addEventListener("mousedown", function (e) {
+    if (e.button !== 0 || isSyntheticMouseEvent()) return;
+    reset();
+    var td = e.target.closest("td.cell");
+    if (!td || !cellHasContent(td)) return;
+    e.preventDefault();
+    armPending(e.clientX, e.clientY, td);
+  });
+
+  document.addEventListener("mousemove", function (e) {
+    if (isSyntheticMouseEvent()) return;
+    handleMove(e.clientX, e.clientY);
+  });
+
+  document.addEventListener("mouseup", function (e) {
+    if (e.button !== 0 || isSyntheticMouseEvent()) return;
+    handleEnd();
+  });
 })();
