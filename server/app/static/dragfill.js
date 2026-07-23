@@ -107,15 +107,14 @@
     var originIdForRequest = originCellId;
     reset();
     if (targetIds.length === 0) return;
+    // Filled cells are refreshed via the server's own cell.updated broadcast
+    // (live.js), the same path every other mutation in this app uses -
+    // doing it again here too would race that broadcast for the same DOM
+    // element on an outerHTML swap.
     fetch("/web/cells/" + originIdForRequest + "/fill", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_cell_ids: targetIds })
-    }).then(function (r) { return r.json(); }).then(function (data) {
-      (data.filled || []).forEach(function (cellId) {
-        var el = document.getElementById("cell-" + cellId);
-        if (el) htmx.ajax("GET", "/web/cells/" + cellId, { target: el, swap: "outerHTML" });
-      });
     }).catch(function (err) { console.error("drag-fill request failed", err); });
   }
 
